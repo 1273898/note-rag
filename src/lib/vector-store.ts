@@ -1,6 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs';
-import path from 'path';
 
 export interface DocumentChunk {
   id: string;
@@ -19,18 +17,13 @@ export interface SearchResult {
   score: number;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const STORE_FILE = path.join(DATA_DIR, 'vector-store.json');
-
 // Simple tokenizer for Chinese + English
 function tokenize(text: string): string[] {
   const lower = text.toLowerCase();
-  // Split on non-alphanumeric/CJK boundaries, keep CJK chars as individual tokens
   const tokens: string[] = [];
   let buf = '';
   for (const ch of lower) {
     if (ch >= '一' && ch <= '鿿') {
-      // CJK character - emit as its own token
       if (buf) { tokens.push(buf); buf = ''; }
       tokens.push(ch);
     } else if (/[a-z0-9]/.test(ch)) {
@@ -74,31 +67,8 @@ function bm25Score(
 class VectorStore {
   private chunks: DocumentChunk[] = [];
 
-  constructor() {
-    this.load();
-  }
-
-  private load() {
-    try {
-      if (fs.existsSync(STORE_FILE)) {
-        const data = fs.readFileSync(STORE_FILE, 'utf-8');
-        this.chunks = JSON.parse(data);
-      }
-    } catch {
-      this.chunks = [];
-    }
-  }
-
-  private save() {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(STORE_FILE, JSON.stringify(this.chunks, null, 2));
-  }
-
   addChunks(chunks: DocumentChunk[]) {
     this.chunks.push(...chunks);
-    this.save();
   }
 
   search(query: string, topK: number = 5): SearchResult[] {
@@ -107,7 +77,6 @@ class VectorStore {
     const queryTokens = tokenize(query);
     if (queryTokens.length === 0) return [];
 
-    // Build document frequency map
     const df = new Map<string, number>();
     let totalLen = 0;
     for (const chunk of this.chunks) {
@@ -135,7 +104,6 @@ class VectorStore {
 
   removeByFileName(fileName: string) {
     this.chunks = this.chunks.filter(c => c.metadata.fileName !== fileName);
-    this.save();
   }
 
   getAllFileNames(): string[] {
@@ -148,7 +116,6 @@ class VectorStore {
 
   clear() {
     this.chunks = [];
-    this.save();
   }
 }
 
