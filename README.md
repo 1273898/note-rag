@@ -1,53 +1,63 @@
-# NoteRAG - Personal Notes Q&A with Traceable Citations
+# NoteRAG - 个人笔记问答系统
 
-A RAG (Retrieval-Augmented Generation) + Agent system that lets users upload personal notes and ask questions with every answer grounded in source documents and fully traceable.
+基于 RAG（检索增强生成）+ Agent 架构的个人笔记问答系统。用户上传笔记后即可提问，每个回答都基于笔记内容，并提供可追溯的引用来源。
 
-## What I Built
+## 做了什么
 
-NoteRAG is a full-stack web application that enables users to:
+NoteRAG 是一个全栈 Web 应用，支持：
 
-1. **Upload personal notes** (.txt, .md files) via a drag-and-drop interface
-2. **Ask questions** in a chat interface and get answers grounded in their notes
-3. **Trace every claim** back to its source with clickable citations that show the exact passage, file name, chunk index, character range, and relevance score
+1. **上传笔记**（.txt、.md 文件），通过拖拽或点击上传
+2. **提问并获得基于笔记的回答**，采用流式输出
+3. **引用溯源**：每个回答中的声明都带有 `[Source N]` 引用标记，点击可查看源文件名、块索引、字符范围和相关度分数
 
-**Architecture:**
-- **Frontend:** Next.js App Router with React, Tailwind CSS
-- **Backend:** Next.js API Routes with streaming responses
-- **Retrieval:** BM25 text search (no external embedding API needed)
-- **LLM:** Xiaomi MiMo v2.5 Pro via Anthropic-compatible API
-- **Vector Store:** In-memory store with JSON file persistence and BM25 scoring
-- **Chunking:** 500-character chunks with 100-character overlap for context preservation
+**技术架构：**
+- **前端：** Next.js App Router + React + Tailwind CSS
+- **后端：** Next.js API Routes，流式响应
+- **检索：** BM25 文本搜索（无需外部嵌入 API）
+- **大模型：** 小米 MiMo v2.5 Pro，通过 OpenAI 兼容接口调用
+- **存储：** 内存索引 + JSON 文件持久化
+- **分块：** 按语句边界切分，最大 500 字符，相邻块重叠 1 句
 
-**How it works:**
-1. Documents are split into overlapping chunks and tokenized (supporting Chinese + English)
-2. When a question is asked, BM25 ranks chunks by keyword relevance
-3. Top 5 relevant chunks are injected into the LLM prompt as context
-4. The LLM generates an answer with mandatory `[Source N]` citations
-5. Sources are returned alongside the streaming response for the citation panel
+**工作流程：**
+1. 文档按语句边界分块，支持中英文分词
+2. 用户提问时，BM25 根据关键词相关性对分块排序
+3. 取 Top 5 相关分块注入大模型的 prompt 作为上下文
+4. 大模型生成带有 `[Source N]` 引用的回答
+5. 引用信息随流式响应一同返回，展示在右侧面板
 
-## What I Chose Not to Build, and Why
+## 没做什么，为什么
 
-- **Authentication/multi-user:** Skipped to focus on the core RAG experience. Adding auth would be straightforward with NextAuth.js but doesn't demonstrate the key differentiator (grounded answers with honest citations).
-- **PDF/DOCX support:** Kept to .txt and .md to avoid heavy dependencies. The upload mechanism is extensible.
-- **Dense vector search:** Used BM25 instead of embedding-based search because the LLM provider (Xiaomi MiMo) doesn't offer an embeddings API. BM25 works well for personal note collections and avoids external API dependencies for retrieval.
-- **Re-ranking / hybrid search:** Basic BM25 works well for personal note collections. Cross-encoder re-ranking would help at scale but adds complexity without proportional benefit for small collections.
+- **用户认证/多用户：** 跳过，聚焦核心 RAG 体验。用 NextAuth.js 加认证很直接，但不能体现本项目的核心价值（基于笔记的可信回答）。
+- **PDF/DOCX 支持：** 仅支持 .txt 和 .md，避免引入重型依赖。上传机制可扩展。
+- **稠密向量检索：** 使用 BM25 代替嵌入式检索，因为大模型提供商（小米 MiMo）没有嵌入 API。BM25 对个人笔记集合效果良好，且无需额外的 API 依赖。
+- **重排序/混合检索：** 基础 BM25 对小规模笔记集合够用。交叉编码器重排序在大规模场景有帮助，但对小集合收益不大。
 
-## What I'd Do Differently With 3 More Days
+## 如果多给 3 天
 
-1. **Add hybrid search** — combine BM25 with dense vectors (using a local embedding model) for better recall on both keyword and semantic queries.
-2. **Implement document-level citation highlighting** — instead of just showing the chunk, highlight the exact passage within the original document view, giving users a true "show me where" experience.
-3. **Add evaluation metrics** — build a test set of question-answer pairs from sample notes and measure citation accuracy (does the cited text actually support the claim?) to systematically improve retrieval and prompting.
+1. **混合检索** — 结合 BM25 和稠密向量（用本地嵌入模型），同时提升关键词和语义查询的召回率。
+2. **文档级引用高亮** — 不只是展示分块，而是在原文档视图中高亮精确段落，让用户真正看到"在哪里"。
+3. **评估指标** — 构建问答测试集，衡量引用准确性（引用的文本是否真正支持该声明），系统性地改进检索和 prompt。
 
-## Setup
+## 快速开始
 
 ```bash
 npm install
 cp .env.example .env.local
-# Add your API credentials to .env.local
+# 在 .env.local 中填入 API 密钥
 npm run dev
 ```
 
-## Environment Variables
+访问 http://localhost:3000
 
-- `ANTHROPIC_AUTH_TOKEN` - Required. API auth token for the LLM.
-- `ANTHROPIC_BASE_URL` - Required. Base URL for the Anthropic-compatible API.
+## 环境变量
+
+| 变量名 | 说明 | 必填 |
+|--------|------|------|
+| `XIAOMI_API_KEY` | 小米 MiMo API 密钥 | 是 |
+| `XIAOMI_BASE_URL` | API 基础地址，默认 `https://token-plan-cn.xiaomimimo.com/v1` | 否 |
+
+## 部署
+
+推送到 GitHub 后，在 [Vercel](https://vercel.com) 导入仓库，添加环境变量即可部署。
+
+> 注意：Vercel 的 serverless 函数文件系统是临时的，上传的笔记会在函数重启后丢失。演示够用，生产环境建议改用外部数据库。
